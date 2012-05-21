@@ -3,7 +3,16 @@ embeddedLamp
 
 Kissig Embedded Systems SS 2012
 
-This is not a readme but a template.
+Group members:
+Kamil Wozniak
+Simon Wiesmann
+Mathias Gölke
+Bartholomäus Dedersen
+
+Overview
+--------
+
+![General overview of project](https://github.com/Phialo/embeddedLamp/raw/master/overview.png) "Some rough overview in a simulated UML environment")
 
 Connection Hint for Working at Home
 ---------------------------------
