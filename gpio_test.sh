@@ -6,7 +6,8 @@ cd gpio$1
 echo "low" > direction
 
 while true; do
-    echo 1 > value
+    echo "1" > value
     sleep 1
-    echo 0 > value
+    echo "0" > value
+    sleep 1
 done
