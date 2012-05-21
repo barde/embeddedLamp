@@ -3,11 +3,12 @@ embeddedLamp
 
 Kissig Embedded Systems SS 2012
 
-Group members:
-Kamil Wozniak
-Simon Wiesmann
-Mathias Gölke
-Bartholomäus Dedersen
+Group members
+--------------
+* Kamil Wozniak
+* Simon Wiesmann
+* Mathias Gölke
+* Bartholomäus Dedersen
 
 Overview
 --------
