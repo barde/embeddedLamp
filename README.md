@@ -26,3 +26,8 @@ Connection Hint for Working at Home
 5. You can now access the */sys/class/gpio* files and try out using the LED as blinking debug port
 
 Kernel sources and compiler are on the system.
+
+Documentation Snippets
+-----------------------
+`panda@panda:~/embeddedLamp/kernel-module$ zcat /proc/config.gz  | grep CONFIG_SPI
+CONFIG_SPI=y`
