@@ -38,6 +38,15 @@
 #define SPI_BUS_CS1 1
 #define SPI_BUS_SPEED 1000000
 
+struct embeddedLamp_control {
+	struct spi_message msg;
+	struct spi_transfer transfer;
+	u8 *tx_buff; 
+	u8 *rx_buff;
+};
+
+static struct embeddedLamp_control embeddedLamp_ctl;
+
 const char this_driver_name[] = "embeddedLamp";
 
 static int __init add_embeddedLamp_to_bus(void)

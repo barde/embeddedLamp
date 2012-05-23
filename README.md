@@ -31,3 +31,16 @@ Documentation Snippets
 -----------------------
 `panda@panda:~/embeddedLamp/kernel-module$ zcat /proc/config.gz  | grep CONFIG_SPI
 CONFIG_SPI=y`
+
+two differnt kind of modes for SPI:
+  Controller drivers ... controllers may be built in to System-On-Chip
+	processors, and often support both Master and Slave roles.
+	These drivers touch hardware registers and may use DMA.
+	Or they can be PIO bitbangers, needing just GPIO pins.
+
+  Protocol drivers ... these pass messages through the controller
+	driver to communicate with a Slave or Master device on the
+	other side of an SPI link.
+from: http://www.kernel.org/doc/Documentation/spi/spi-summary
+
+We use a protocol driver
