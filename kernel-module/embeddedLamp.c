@@ -1,13 +1,27 @@
 /* embeddedLamp.c
-	A driver for multiple LEDs over SPI and GPIO for displaying various information
-	on a Pandaboard.
+   A driver for multiple LEDs over SPI and GPIO for displaying various information
+   on a Pandaboard.
 
-2012 Bartholomaeus Dedersen
+   2012 (C) Bartholomaeus Dedersen, Fachhochschule Kiel, Germany
 
-Loosely based on works of Scott Ellis
-https://github.com/scottellis/spike/
+   Loosely based on works of Scott Ellis
+   https://github.com/scottellis/spike/
 
-This software is public domain*/
+   This program is free software; you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation; either version 3 of the License, or
+   (at your option) any later version.
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+   You should have received a copy of the GNU General Public License
+   along with this program; if not, write to the Free Software Foundation,
+   Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA
+
+*/
+
+
 
 #include <linux/init.h>
 #include <linux/module.h>
@@ -96,5 +110,5 @@ static int __init add_embeddedLamp_to_bus(void)
 
 MODULE_AUTHOR("Bartholomaeus Dedersen");
 MODULE_DESCRIPTION("embeddedLamp - Kernel driver for lightening up LEDs");
-MODULE_LICENSE("Public Domain");
+MODULE_LICENSE("GPLv3");
 MODULE_VERSION("0.1");
