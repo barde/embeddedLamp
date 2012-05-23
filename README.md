@@ -44,3 +44,6 @@ two differnt kind of modes for SPI:
 from: http://www.kernel.org/doc/Documentation/spi/spi-summary
 
 We use a protocol driver
+
+first success picture:
+![D2=Data, D1=Chip Select, D0=Clock](https://github.com/Phialo/embeddedLamp/raw/master/firstSuccess.png)

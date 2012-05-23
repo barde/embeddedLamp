@@ -5,7 +5,7 @@
    2012 (C) Bartholomaeus Dedersen, Fachhochschule Kiel, Germany
 
    Loosely based on works of Scott Ellis
-   https://github.com/scottellis/spike/
+   https://github.com/scottellis/embeddedLamp/
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -22,34 +22,268 @@
 */
 
 
-
 #include <linux/init.h>
 #include <linux/module.h>
-//#include <linux/fs.h>
-//#include <linux/device.h>
-//#include <linux/mutex.h>
-//#include <linux/slab.h>
-//#include <linux/cdev.h>
+#include <linux/fs.h>
+#include <linux/device.h>
+#include <linux/mutex.h>
+#include <linux/slab.h>
+#include <linux/cdev.h>
 #include <linux/spi/spi.h>
 #include <linux/string.h>
-//#include <asm/uaccess.h>
+#include <asm/uaccess.h>
+#include <linux/moduleparam.h>
+#include <linux/hrtimer.h>
+
+#define NANOSECS_PER_SEC 1000000000
+#define SPI_BUFF_SIZE	16
+#define USER_BUFF_SIZE	128
 
 #define SPI_BUS 1
 #define SPI_BUS_CS1 1
 #define SPI_BUS_SPEED 1000000
 
+#define DEFAULT_WRITE_FREQUENCY 100
+static int write_frequency = DEFAULT_WRITE_FREQUENCY;
+module_param(write_frequency, int, S_IRUGO);
+MODULE_PARM_DESC(write_frequency, "Spike write frequency in Hz");
+
+
+const char this_driver_name[] = "embeddedLamp";
+
 struct embeddedLamp_control {
 	struct spi_message msg;
 	struct spi_transfer transfer;
+	u32 busy;
+	u32 spi_callbacks;
+	u32 busy_counter;
 	u8 *tx_buff; 
-	u8 *rx_buff;
 };
 
 static struct embeddedLamp_control embeddedLamp_ctl;
 
-const char this_driver_name[] = "embeddedLamp";
+struct embeddedLamp_dev {
+	spinlock_t spi_lock;
+	struct semaphore fop_sem;
+	dev_t devt;
+	struct cdev cdev;
+	struct class *class;
+	struct spi_device *spi_device;
+	struct hrtimer timer;
+	u32 timer_period_sec;
+	u32 timer_period_ns;
+	u32 running;
+	char *user_buff;
+};
 
-static int __init add_embeddedLamp_to_bus(void)
+static struct embeddedLamp_dev embeddedLamp_dev;
+
+
+static void embeddedLamp_completion_handler(void *arg)
+{	
+	embeddedLamp_ctl.spi_callbacks++;
+	embeddedLamp_ctl.busy = 0;
+}
+
+static int embeddedLamp_queue_spi_write(void)
+{
+	int status;
+	unsigned long flags;
+
+	spi_message_init(&embeddedLamp_ctl.msg);
+
+	/* this gets called when the spi_message completes */
+	embeddedLamp_ctl.msg.complete = embeddedLamp_completion_handler;
+	embeddedLamp_ctl.msg.context = NULL;
+
+	/* write some toggling bit patterns, doesn't really matter */	
+	embeddedLamp_ctl.tx_buff[0] = 0xAA;
+	embeddedLamp_ctl.tx_buff[1] = 0x55;
+
+	embeddedLamp_ctl.transfer.tx_buf = embeddedLamp_ctl.tx_buff;
+	embeddedLamp_ctl.transfer.rx_buf = NULL;
+	embeddedLamp_ctl.transfer.len = 2;
+
+	spi_message_add_tail(&embeddedLamp_ctl.transfer, &embeddedLamp_ctl.msg);
+
+	spin_lock_irqsave(&embeddedLamp_dev.spi_lock, flags);
+
+	if (embeddedLamp_dev.spi_device)
+		status = spi_async(embeddedLamp_dev.spi_device, &embeddedLamp_ctl.msg);
+	else
+		status = -ENODEV;
+
+	spin_unlock_irqrestore(&embeddedLamp_dev.spi_lock, flags);
+	
+	if (status == 0)
+		embeddedLamp_ctl.busy = 1;
+	
+	return status;	
+}
+
+static enum hrtimer_restart embeddedLamp_timer_callback(struct hrtimer *timer)
+{
+	if (!embeddedLamp_dev.running) {
+		return HRTIMER_NORESTART;
+	}
+
+	/* busy means the previous message has not completed */
+	if (embeddedLamp_ctl.busy) {
+		embeddedLamp_ctl.busy_counter++;
+	}
+	else if (embeddedLamp_queue_spi_write() != 0) {
+		return HRTIMER_NORESTART;
+	}
+
+	hrtimer_forward_now(&embeddedLamp_dev.timer, 
+		ktime_set(embeddedLamp_dev.timer_period_sec, 
+			embeddedLamp_dev.timer_period_ns));
+	
+	return HRTIMER_RESTART;
+}
+
+static ssize_t embeddedLamp_read(struct file *filp, char __user *buff, size_t count,
+			loff_t *offp)
+{
+	size_t len;
+	ssize_t status = 0;
+
+	if (!buff) 
+		return -EFAULT;
+
+	if (*offp > 0) 
+		return 0;
+
+	if (down_interruptible(&embeddedLamp_dev.fop_sem)) 
+		return -ERESTARTSYS;
+
+	sprintf(embeddedLamp_dev.user_buff, 
+			"%s|%u|%u\n",
+			embeddedLamp_dev.running ? "Running" : "Stopped",
+			embeddedLamp_ctl.spi_callbacks,
+			embeddedLamp_ctl.busy_counter);
+		
+	len = strlen(embeddedLamp_dev.user_buff);
+ 
+	if (len < count) 
+		count = len;
+
+	if (copy_to_user(buff, embeddedLamp_dev.user_buff, count))  {
+		printk(KERN_ALERT "embeddedLamp_read(): copy_to_user() failed\n");
+		status = -EFAULT;
+	} else {
+		*offp += count;
+		status = count;
+	}
+
+	up(&embeddedLamp_dev.fop_sem);
+
+	return status;	
+}
+
+/*
+ * We accept two commands 'start' or 'stop' and ignore anything else.
+ */
+static ssize_t embeddedLamp_write(struct file *filp, const char __user *buff,
+		size_t count, loff_t *f_pos)
+{
+	size_t len;	
+	ssize_t status = 0;
+
+	if (down_interruptible(&embeddedLamp_dev.fop_sem))
+		return -ERESTARTSYS;
+
+	memset(embeddedLamp_dev.user_buff, 0, 16);
+	len = count > 8 ? 8 : count;
+
+	if (copy_from_user(embeddedLamp_dev.user_buff, buff, len)) {
+		status = -EFAULT;
+		goto embeddedLamp_write_done;
+	}
+
+	/* we'll act as if we looked at all the data */
+	status = count;
+
+	/* but we only care about the first 5 characters */
+	if (!strnicmp(embeddedLamp_dev.user_buff, "start", 5)) {
+		if (embeddedLamp_dev.running) {
+			printk(KERN_ALERT "already running\n");
+			goto embeddedLamp_write_done;
+		}
+
+		if (embeddedLamp_ctl.busy) {
+			printk(KERN_ALERT "waiting on a spi transaction\n");
+			goto embeddedLamp_write_done;
+		}
+
+		embeddedLamp_ctl.spi_callbacks = 0;		
+		embeddedLamp_ctl.busy_counter = 0;
+
+		hrtimer_start(&embeddedLamp_dev.timer, 
+				ktime_set(embeddedLamp_dev.timer_period_sec, 
+					embeddedLamp_dev.timer_period_ns),
+        	               	HRTIMER_MODE_REL);
+
+		embeddedLamp_dev.running = 1; 
+	} 
+	else if (!strnicmp(embeddedLamp_dev.user_buff, "stop", 4)) {
+		hrtimer_cancel(&embeddedLamp_dev.timer);
+		embeddedLamp_dev.running = 0;
+	}
+
+embeddedLamp_write_done:
+
+	up(&embeddedLamp_dev.fop_sem);
+
+	return status;
+}
+
+static int embeddedLamp_open(struct inode *inode, struct file *filp)
+{	
+	int status = 0;
+
+	if (down_interruptible(&embeddedLamp_dev.fop_sem)) 
+		return -ERESTARTSYS;
+
+	if (!embeddedLamp_dev.user_buff) {
+		embeddedLamp_dev.user_buff = kmalloc(USER_BUFF_SIZE, GFP_KERNEL);
+		if (!embeddedLamp_dev.user_buff) 
+			status = -ENOMEM;
+	}	
+
+	up(&embeddedLamp_dev.fop_sem);
+
+	return status;
+}
+
+static int embeddedLamp_probe(struct spi_device *spi_device)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&embeddedLamp_dev.spi_lock, flags);
+	embeddedLamp_dev.spi_device = spi_device;
+	spin_unlock_irqrestore(&embeddedLamp_dev.spi_lock, flags);
+
+	return 0;
+}
+
+static int embeddedLamp_remove(struct spi_device *spi_device)
+{
+	unsigned long flags;
+
+	if (embeddedLamp_dev.running) {
+		hrtimer_cancel(&embeddedLamp_dev.timer);
+		embeddedLamp_dev.running = 0;
+	}
+
+	spin_lock_irqsave(&embeddedLamp_dev.spi_lock, flags);
+	embeddedLamp_dev.spi_device = NULL;
+	spin_unlock_irqrestore(&embeddedLamp_dev.spi_lock, flags);
+
+	return 0;
+}
+
+static int __init add_embeddedLamp_device_to_bus(void)
 {
 	struct spi_master *spi_master;
 	struct spi_device *spi_device;
@@ -61,7 +295,7 @@ static int __init add_embeddedLamp_to_bus(void)
 	if (!spi_master) {
 		printk(KERN_ALERT "spi_busnum_to_master(%d) returned NULL\n",
 			SPI_BUS);
-		printk(KERN_ALERT "No modprobe for SPI-Bus!\n");
+		printk(KERN_ALERT "Missing modprobe omap2_mcspi?\n");
 		return -1;
 	}
 
@@ -83,7 +317,7 @@ static int __init add_embeddedLamp_to_bus(void)
  	if (pdev) {
 		/* We are not going to use this spi_device, so free it */ 
 		spi_dev_put(spi_device);
-
+		
 		/* 
 		 * There is already a device configured for this bus.cs  
 		 * It is okay if it us, otherwise complain and fail.
@@ -103,7 +337,7 @@ static int __init add_embeddedLamp_to_bus(void)
 		spi_device->controller_state = NULL;
 		spi_device->controller_data = NULL;
 		strlcpy(spi_device->modalias, this_driver_name, SPI_NAME_SIZE);
-
+		
 		status = spi_add_device(spi_device);		
 		if (status < 0) {	
 			spi_dev_put(spi_device);
@@ -117,7 +351,173 @@ static int __init add_embeddedLamp_to_bus(void)
 	return status;
 }
 
+static struct spi_driver embeddedLamp_driver = {
+	.driver = {
+		.name =	this_driver_name,
+		.owner = THIS_MODULE,
+	},
+	.probe = embeddedLamp_probe,
+	.remove = __devexit_p(embeddedLamp_remove),	
+};
+
+static int __init embeddedLamp_init_spi(void)
+{
+	int error;
+
+	embeddedLamp_ctl.tx_buff = kmalloc(SPI_BUFF_SIZE, GFP_KERNEL | GFP_DMA);
+	if (!embeddedLamp_ctl.tx_buff) {
+		error = -ENOMEM;
+		goto embeddedLamp_init_error;
+	}
+
+	error = spi_register_driver(&embeddedLamp_driver);
+	if (error < 0) {
+		printk(KERN_ALERT "spi_register_driver() failed %d\n", error);
+		goto embeddedLamp_init_error;
+	}
+
+	error = add_embeddedLamp_device_to_bus();
+	if (error < 0) {
+		printk(KERN_ALERT "add_embeddedLamp_to_bus() failed\n");
+		spi_unregister_driver(&embeddedLamp_driver);
+		goto embeddedLamp_init_error;	
+	}
+
+	return 0;
+
+embeddedLamp_init_error:
+
+	if (embeddedLamp_ctl.tx_buff) {
+		kfree(embeddedLamp_ctl.tx_buff);
+		embeddedLamp_ctl.tx_buff = 0;
+	}
+
+	return error;
+}
+
+static const struct file_operations embeddedLamp_fops = {
+	.owner =	THIS_MODULE,
+	.read = 	embeddedLamp_read,
+	.write = 	embeddedLamp_write,
+	.open =		embeddedLamp_open,	
+};
+
+static int __init embeddedLamp_init_cdev(void)
+{
+	int error;
+
+	embeddedLamp_dev.devt = MKDEV(0, 0);
+
+	error = alloc_chrdev_region(&embeddedLamp_dev.devt, 0, 1, this_driver_name);
+	if (error < 0) {
+		printk(KERN_ALERT "alloc_chrdev_region() failed: %d \n", 
+			error);
+		return -1;
+	}
+
+	cdev_init(&embeddedLamp_dev.cdev, &embeddedLamp_fops);
+	embeddedLamp_dev.cdev.owner = THIS_MODULE;
+	
+	error = cdev_add(&embeddedLamp_dev.cdev, embeddedLamp_dev.devt, 1);
+	if (error) {
+		printk(KERN_ALERT "cdev_add() failed: %d\n", error);
+		unregister_chrdev_region(embeddedLamp_dev.devt, 1);
+		return -1;
+	}	
+
+	return 0;
+}
+
+static int __init embeddedLamp_init_class(void)
+{
+	embeddedLamp_dev.class = class_create(THIS_MODULE, this_driver_name);
+
+	if (!embeddedLamp_dev.class) {
+		printk(KERN_ALERT "class_create() failed\n");
+		return -1;
+	}
+
+	if (!device_create(embeddedLamp_dev.class, NULL, embeddedLamp_dev.devt, NULL, 	
+			this_driver_name)) {
+		printk(KERN_ALERT "device_create(..., %s) failed\n",
+			this_driver_name);
+		class_destroy(embeddedLamp_dev.class);
+		return -1;
+	}
+
+	return 0;
+}
+
+static int __init embeddedLamp_init(void)
+{
+	memset(&embeddedLamp_dev, 0, sizeof(embeddedLamp_dev));
+	memset(&embeddedLamp_ctl, 0, sizeof(embeddedLamp_ctl));
+
+	spin_lock_init(&embeddedLamp_dev.spi_lock);
+	sema_init(&embeddedLamp_dev.fop_sem, 1);
+	
+	if (embeddedLamp_init_cdev() < 0) 
+		goto fail_1;
+	
+	if (embeddedLamp_init_class() < 0)  
+		goto fail_2;
+
+	if (embeddedLamp_init_spi() < 0) 
+		goto fail_3;
+
+	/* enforce some range to the write frequency, this is arbitrary */
+	if (write_frequency < 1 || write_frequency > 10000) {
+		printk(KERN_ALERT "write_frequency reset to %d", 
+			DEFAULT_WRITE_FREQUENCY);
+
+		write_frequency = DEFAULT_WRITE_FREQUENCY;
+	}
+
+	if (write_frequency == 1)
+		embeddedLamp_dev.timer_period_sec = 1;
+	else
+		embeddedLamp_dev.timer_period_ns = NANOSECS_PER_SEC / write_frequency; 
+
+	hrtimer_init(&embeddedLamp_dev.timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	embeddedLamp_dev.timer.function = embeddedLamp_timer_callback;
+	/* leave the embeddedLamp_dev.timer.data field = NULL, not needed */
+
+	return 0;
+
+fail_3:
+	device_destroy(embeddedLamp_dev.class, embeddedLamp_dev.devt);
+	class_destroy(embeddedLamp_dev.class);
+
+fail_2:
+	cdev_del(&embeddedLamp_dev.cdev);
+	unregister_chrdev_region(embeddedLamp_dev.devt, 1);
+
+fail_1:
+	return -1;
+}
+module_init(embeddedLamp_init);
+
+static void __exit embeddedLamp_exit(void)
+{
+	spi_unregister_device(embeddedLamp_dev.spi_device);
+	spi_unregister_driver(&embeddedLamp_driver);
+
+	device_destroy(embeddedLamp_dev.class, embeddedLamp_dev.devt);
+	class_destroy(embeddedLamp_dev.class);
+
+	cdev_del(&embeddedLamp_dev.cdev);
+	unregister_chrdev_region(embeddedLamp_dev.devt, 1);
+
+	if (embeddedLamp_ctl.tx_buff)
+		kfree(embeddedLamp_ctl.tx_buff);
+
+	if (embeddedLamp_dev.user_buff)
+		kfree(embeddedLamp_dev.user_buff);
+}
+module_exit(embeddedLamp_exit);
+
 MODULE_AUTHOR("Bartholomaeus Dedersen");
-MODULE_DESCRIPTION("embeddedLamp - Kernel driver for lightening up LEDs");
-MODULE_LICENSE("GPLv3");
+MODULE_DESCRIPTION("embeddedLamp");
+MODULE_LICENSE("GPL");
 MODULE_VERSION("0.1");
+
