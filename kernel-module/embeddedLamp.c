@@ -34,9 +34,18 @@
 #include <asm/uaccess.h>
 #include <linux/moduleparam.h>
 #include <linux/hrtimer.h>
+#include <linux/gpio.h>
+#include <plat/mux.h> 
+
+
+
+#define GPIO_CONTROL "/sys/class/gpio/export"
+#define GPIO_EXPORT "/sys/class/gpio/gpio140/export"
+#define GPIO_VALUE "/sys/class/gpio/gpio140/value"
+
 
 #define NANOSECS_PER_SEC 1000000000
-#define SPI_BUFF_SIZE	16
+#define SPI_BUFF_SIZE	40
 #define USER_BUFF_SIZE	128
 
 #define SPI_BUS 1
@@ -85,10 +94,14 @@ static void embeddedLamp_completion_handler(void *arg)
 	embeddedLamp_ctl.busy = 0;
 }
 
-static int embeddedLamp_queue_spi_write(void)
+static int embeddedLamp_queue_spi_write(u8 *fivePartMsg)
 {
 	int status;
 	unsigned long flags;
+	u8 msg[5];
+	int i;
+
+	fivePartMsg = &msg[0];
 
 	spi_message_init(&embeddedLamp_ctl.msg);
 
@@ -97,12 +110,12 @@ static int embeddedLamp_queue_spi_write(void)
 	embeddedLamp_ctl.msg.context = NULL;
 
 	/* write some toggling bit patterns, doesn't really matter */	
-	embeddedLamp_ctl.tx_buff[0] = 0xAA;
-	embeddedLamp_ctl.tx_buff[1] = 0x55;
+	for(i = 0; i < 5; i++)
+		embeddedLamp_ctl.tx_buff[i] = msg[i];
 
 	embeddedLamp_ctl.transfer.tx_buf = embeddedLamp_ctl.tx_buff;
 	embeddedLamp_ctl.transfer.rx_buf = NULL;
-	embeddedLamp_ctl.transfer.len = 2;
+	embeddedLamp_ctl.transfer.len = 5;
 
 	spi_message_add_tail(&embeddedLamp_ctl.transfer, &embeddedLamp_ctl.msg);
 
@@ -123,6 +136,9 @@ static int embeddedLamp_queue_spi_write(void)
 
 static enum hrtimer_restart embeddedLamp_timer_callback(struct hrtimer *timer)
 {
+	static u8 msg[] = {0,0,0,0,0};
+	static int countArrayPart = 0;
+
 	if (!embeddedLamp_dev.running) {
 		return HRTIMER_NORESTART;
 	}
@@ -131,13 +147,26 @@ static enum hrtimer_restart embeddedLamp_timer_callback(struct hrtimer *timer)
 	if (embeddedLamp_ctl.busy) {
 		embeddedLamp_ctl.busy_counter++;
 	}
-	else if (embeddedLamp_queue_spi_write() != 0) {
+	else if (embeddedLamp_queue_spi_write(msg) != 0) {
 		return HRTIMER_NORESTART;
 	}
 
 	hrtimer_forward_now(&embeddedLamp_dev.timer, 
 		ktime_set(embeddedLamp_dev.timer_period_sec, 
 			embeddedLamp_dev.timer_period_ns));
+
+	/* increase a running counter for demo display */
+	if(msg[countArrayPart] == 0xFFFF){
+		if(countArrayPart < 5)
+			countArrayPart++;
+		else{
+			countArrayPart = 0;
+			memset(msg,0,10);
+		}	
+	}else{
+		msg[countArrayPart] <<= 1;
+		msg[countArrayPart] |= 0x1;
+	}
 	
 	return HRTIMER_RESTART;
 }
@@ -363,6 +392,19 @@ static struct spi_driver embeddedLamp_driver = {
 static int __init embeddedLamp_init_spi(void)
 {
 	int error;
+
+/*
+	int gpioControl,gpioExport,gpioValue;
+
+	gpioControl = open(GPIO_CONTROL,O_WRONLY|O_NOCTTY|O_NDELAY);
+	write(gpioControl, "140", 3);
+	close(gpioControl);
+	
+	gpioExport = open(GPIO_EXPORT,O_WRONLY|O_NOCTTY|O_NDELAY);
+	write(gpioExport, "low", 3);
+	close(gpioExport);
+*/
+	
 
 	embeddedLamp_ctl.tx_buff = kmalloc(SPI_BUFF_SIZE, GFP_KERNEL | GFP_DMA);
 	if (!embeddedLamp_ctl.tx_buff) {
