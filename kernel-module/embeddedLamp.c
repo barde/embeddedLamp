@@ -38,7 +38,7 @@
 #include <plat/mux.h> 
 
 
-
+#define GPIO_PIN 140
 #define GPIO_CONTROL "/sys/class/gpio/export"
 #define GPIO_EXPORT "/sys/class/gpio/gpio140/export"
 #define GPIO_VALUE "/sys/class/gpio/gpio140/value"
@@ -90,8 +90,13 @@ static struct embeddedLamp_dev embeddedLamp_dev;
 
 static void embeddedLamp_completion_handler(void *arg)
 {	
+    //set latching for LED over GPIO
+    gpio_set_value(GPIO_PIN,1);
+    //wait 5ms
+    usleep(5);
 	embeddedLamp_ctl.spi_callbacks++;
 	embeddedLamp_ctl.busy = 0;
+    gpio_set_value(GPIO_PIN,0);
 }
 
 static int embeddedLamp_queue_spi_write(u8 *fivePartMsg)
@@ -392,6 +397,15 @@ static struct spi_driver embeddedLamp_driver = {
 static int __init embeddedLamp_init_spi(void)
 {
 	int error;
+
+    omap_mux_init_gpio(GPIO_PIN, OMAP_PIN_INPUT);
+    error = gpio_request(GPIO_PIN, "Latch-Bit");
+        if (error) {
+            printk(KERN_ALERT "failed to request GPIO %d: %d\n", GPIO_PIN, error);
+            goto embeddedLamp_init_error;
+        }
+            
+        gpio_direction_output(GPIO_PIN, 0);
 
 /*
 	int gpioControl,gpioExport,gpioValue;
