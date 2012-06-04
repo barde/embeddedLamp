@@ -37,7 +37,7 @@
 #include <linux/gpio.h>
 #include <linux/delay.h>
 
-
+// the PIN used for latching
 #define GPIO_PIN 140
 
 
@@ -45,11 +45,12 @@
 #define SPI_BUFF_SIZE	40
 #define USER_BUFF_SIZE	128
 
+// SPI configuration, every SPI transfer consists of 5 8bit messages
 #define SPI_BUS 1
-#define SPI_BUS_CS1 1
-#define SPI_BUS_SPEED 1000000
+#define SPI_BUS_CS1 1 			// chip select
+#define SPI_BUS_SPEED 1000000 	// 10 MHz
 
-#define DEFAULT_WRITE_FREQUENCY 100
+#define DEFAULT_WRITE_FREQUENCY 100		// in Hz, frequency in which messages are being sent
 static int write_frequency = DEFAULT_WRITE_FREQUENCY;
 module_param(write_frequency, int, S_IRUGO);
 MODULE_PARM_DESC(write_frequency, "Spike write frequency in Hz");
@@ -57,6 +58,7 @@ MODULE_PARM_DESC(write_frequency, "Spike write frequency in Hz");
 
 const char this_driver_name[] = "embeddedLamp";
 
+// SPI control message
 struct embeddedLamp_control {
 	struct spi_message msg;
 	struct spi_transfer transfer;
@@ -68,6 +70,7 @@ struct embeddedLamp_control {
 
 static struct embeddedLamp_control embeddedLamp_ctl;
 
+// device driver configuration for SPI
 struct embeddedLamp_dev {
 	spinlock_t spi_lock;
 	struct semaphore fop_sem;
@@ -84,9 +87,11 @@ struct embeddedLamp_dev {
 
 static struct embeddedLamp_dev embeddedLamp_dev;
 
-
+// callback, after each completed message transmission (consists of 5 8bit messages)
 static void embeddedLamp_completion_handler(void *arg)
 {	
+	// try 1ms delay
+	//mdelay(1);
 	//set latching for LED over GPIO
 	gpio_set_value(GPIO_PIN,1);
 	//wait 5ms
@@ -96,6 +101,7 @@ static void embeddedLamp_completion_handler(void *arg)
     	gpio_set_value(GPIO_PIN,0);
 }
 
+// used to write the messages into the FIFO queue (queue is being handled by kernel)
 static int embeddedLamp_queue_spi_write(u8 *fivePartMsg)
 {
 	int status;
@@ -115,31 +121,37 @@ static int embeddedLamp_queue_spi_write(u8 *fivePartMsg)
 	for(i = 0; i < 5; i++)
 		embeddedLamp_ctl.tx_buff[i] = msg[i];
 
-	embeddedLamp_ctl.transfer.tx_buf = embeddedLamp_ctl.tx_buff;
-	embeddedLamp_ctl.transfer.rx_buf = NULL;
-	embeddedLamp_ctl.transfer.len = 5;
+	// transfer parameters
+	embeddedLamp_ctl.transfer.tx_buf = embeddedLamp_ctl.tx_buff;	// send buffer
+	embeddedLamp_ctl.transfer.rx_buf = NULL;					// we dont need the receive buffer
+	embeddedLamp_ctl.transfer.len = 5;							// number of messages
 
+	// add messages to SPI transfer
 	spi_message_add_tail(&embeddedLamp_ctl.transfer, &embeddedLamp_ctl.msg);
 
+	// lock interrupt service routine
 	spin_lock_irqsave(&embeddedLamp_dev.spi_lock, flags);
 
 	if (embeddedLamp_dev.spi_device)
-		status = spi_async(embeddedLamp_dev.spi_device, &embeddedLamp_ctl.msg);
+		status = spi_async(embeddedLamp_dev.spi_device, &embeddedLamp_ctl.msg);	// transmit the transfer
 	else
 		status = -ENODEV;
 
 	spin_unlock_irqrestore(&embeddedLamp_dev.spi_lock, flags);
 	
+	// if the transfer could not be sent, remember that it didn't work
 	if (status == 0)
 		embeddedLamp_ctl.busy = 1;
 	
 	return status;	
 }
 
+/**
+ * 
+ */
 static enum hrtimer_restart embeddedLamp_timer_callback(struct hrtimer *timer)
 {
 	static u8 msg[] = {0,0,0,0,0};
-	static u8 dmsg[] = {0xFF,0xFF,0xFF,0xFF,0xFF};
 	static int countArrayPart = 0;
 
 	if (!embeddedLamp_dev.running) {
@@ -159,21 +171,28 @@ static enum hrtimer_restart embeddedLamp_timer_callback(struct hrtimer *timer)
 			embeddedLamp_dev.timer_period_ns));
 
 	/* increase a running counter for demo display */
+	// did we reach the maximum value?
 	if(msg[countArrayPart] == 0xFFFF){
 		if(countArrayPart < 5)
 			countArrayPart++;
 		else{
+			// reset the 5 byte
 			countArrayPart = 0;
 			memset(msg,0,10);
 		}	
-	}else{
+	}else{  // we did not reach the maximum value, yet
 		msg[countArrayPart] <<= 1;
 		msg[countArrayPart] |= 0x1;
 	}
 	
+	// restart the timer
 	return HRTIMER_RESTART;
 }
 
+
+/**
+ * Used to read statistics from the character device /dev/embeddedLamp
+ */
 static ssize_t embeddedLamp_read(struct file *filp, char __user *buff, size_t count,
 			loff_t *offp)
 {
@@ -213,8 +232,11 @@ static ssize_t embeddedLamp_read(struct file *filp, char __user *buff, size_t co
 	return status;	
 }
 
-/*
+
+
+/**
  * We accept two commands 'start' or 'stop' and ignore anything else.
+ * This function writes to the character device
  */
 static ssize_t embeddedLamp_write(struct file *filp, const char __user *buff,
 		size_t count, loff_t *f_pos)
@@ -258,6 +280,7 @@ static ssize_t embeddedLamp_write(struct file *filp, const char __user *buff,
 
 		embeddedLamp_dev.running = 1; 
 	} 
+	// should we stop here?
 	else if (!strnicmp(embeddedLamp_dev.user_buff, "stop", 4)) {
 		hrtimer_cancel(&embeddedLamp_dev.timer);
 		embeddedLamp_dev.running = 0;
@@ -270,6 +293,11 @@ embeddedLamp_write_done:
 	return status;
 }
 
+
+
+/**
+ * Creates /dev/embeddedLamp in the file system
+ */
 static int embeddedLamp_open(struct inode *inode, struct file *filp)
 {	
 	int status = 0;
@@ -288,6 +316,11 @@ static int embeddedLamp_open(struct inode *inode, struct file *filp)
 	return status;
 }
 
+
+
+/**
+ * (Dummy function) Callback to enumerate SPI slaves
+ */
 static int embeddedLamp_probe(struct spi_device *spi_device)
 {
 	unsigned long flags;
@@ -299,6 +332,11 @@ static int embeddedLamp_probe(struct spi_device *spi_device)
 	return 0;
 }
 
+
+
+/**
+ * Remove device /dev/embeddedLamp from file system
+ */
 static int embeddedLamp_remove(struct spi_device *spi_device)
 {
 	unsigned long flags;
@@ -315,6 +353,10 @@ static int embeddedLamp_remove(struct spi_device *spi_device)
 	return 0;
 }
 
+
+/**
+ * Used to connect to SPI bus
+ */
 static int __init add_embeddedLamp_device_to_bus(void)
 {
 	struct spi_master *spi_master;
@@ -383,6 +425,11 @@ static int __init add_embeddedLamp_device_to_bus(void)
 	return status;
 }
 
+
+
+/**
+ * This struct is used to set SPI parameters in the kernel
+ */
 static struct spi_driver embeddedLamp_driver = {
 	.driver = {
 		.name =	this_driver_name,
@@ -392,13 +439,17 @@ static struct spi_driver embeddedLamp_driver = {
 	.remove = __devexit_p(embeddedLamp_remove),	
 };
 
+
+/**
+ * Initialize SPI
+ */
 static int __init embeddedLamp_init_spi(void)
 {
 	int error;
 
 
-    //omap_mux_init_gpio(GPIO_PIN, OMAP_PIN_INPUT);
-    error = gpio_request(GPIO_PIN, "Latch-Bit");
+	//omap_mux_init_gpio(GPIO_PIN, OMAP_PIN_INPUT);
+	error = gpio_request(GPIO_PIN, "Latch-Bit");
         if (error) {
             printk(KERN_ALERT "failed to request GPIO %d: %d\n", GPIO_PIN, error);
             goto embeddedLamp_init_error;
@@ -439,13 +490,23 @@ embeddedLamp_init_error:
 	return error;
 }
 
+
+
+/**
+ * Callbacks for the linux kernel driver
+ */
 static const struct file_operations embeddedLamp_fops = {
 	.owner =	THIS_MODULE,
 	.read = 	embeddedLamp_read,
 	.write = 	embeddedLamp_write,
-	.open =		embeddedLamp_open,	
+	.open =	embeddedLamp_open,	
 };
 
+
+
+/**
+ * Initializes the character device (will be called in initialization of this kernel module)
+ */
 static int __init embeddedLamp_init_cdev(void)
 {
 	int error;
@@ -472,6 +533,11 @@ static int __init embeddedLamp_init_cdev(void)
 	return 0;
 }
 
+
+
+/**
+ * Registers this module in the linux kernel
+ */
 static int __init embeddedLamp_init_class(void)
 {
 	embeddedLamp_dev.class = class_create(THIS_MODULE, this_driver_name);
@@ -492,6 +558,10 @@ static int __init embeddedLamp_init_class(void)
 	return 0;
 }
 
+
+/**
+ * Initialization of the kernel module
+ */
 static int __init embeddedLamp_init(void)
 {
 	memset(&embeddedLamp_dev, 0, sizeof(embeddedLamp_dev));
@@ -500,12 +570,15 @@ static int __init embeddedLamp_init(void)
 	spin_lock_init(&embeddedLamp_dev.spi_lock);
 	sema_init(&embeddedLamp_dev.fop_sem, 1);
 	
+	// initalize the character device
 	if (embeddedLamp_init_cdev() < 0) 
 		goto fail_1;
 	
+	// register this module with the linux kernel
 	if (embeddedLamp_init_class() < 0)  
 		goto fail_2;
 
+	// initialize SPI bus
 	if (embeddedLamp_init_spi() < 0) 
 		goto fail_3;
 
@@ -517,6 +590,7 @@ static int __init embeddedLamp_init(void)
 		write_frequency = DEFAULT_WRITE_FREQUENCY;
 	}
 
+	// set timing of transimissions
 	if (write_frequency == 1)
 		embeddedLamp_dev.timer_period_sec = 1;
 	else
@@ -541,6 +615,11 @@ fail_1:
 }
 module_init(embeddedLamp_init);
 
+
+
+/**
+ * This function is being called when the kernel unloads the module
+ */
 static void __exit embeddedLamp_exit(void)
 {
 
@@ -565,5 +644,5 @@ module_exit(embeddedLamp_exit);
 MODULE_AUTHOR("Bartholomaeus Dedersen");
 MODULE_DESCRIPTION("embeddedLamp");
 MODULE_LICENSE("GPL");
-MODULE_VERSION("0.1");
+MODULE_VERSION("0.2");
 
