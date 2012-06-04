@@ -1,4 +1,4 @@
-/* embeddedLamp.c
+	/* embeddedLamp.c
    A driver for multiple LEDs over SPI and GPIO for displaying various information
    on a Pandaboard.
 
@@ -35,6 +35,7 @@
 #include <linux/moduleparam.h>
 #include <linux/hrtimer.h>
 #include <linux/gpio.h>
+#include <linux/delay.h>
 
 
 #define GPIO_PIN 140
@@ -89,7 +90,7 @@ static void embeddedLamp_completion_handler(void *arg)
 	//set latching for LED over GPIO
 	gpio_set_value(GPIO_PIN,1);
 	//wait 5ms
-	//msleep(5);
+	mdelay(5);
 	embeddedLamp_ctl.spi_callbacks++;
 	embeddedLamp_ctl.busy = 0;
     	gpio_set_value(GPIO_PIN,0);
@@ -110,7 +111,7 @@ static int embeddedLamp_queue_spi_write(u8 *fivePartMsg)
 	embeddedLamp_ctl.msg.complete = embeddedLamp_completion_handler;
 	embeddedLamp_ctl.msg.context = NULL;
 
-	/* write some toggling bit patterns, doesn't really matter */	
+	/* write message from command line */
 	for(i = 0; i < 5; i++)
 		embeddedLamp_ctl.tx_buff[i] = msg[i];
 
@@ -138,6 +139,7 @@ static int embeddedLamp_queue_spi_write(u8 *fivePartMsg)
 static enum hrtimer_restart embeddedLamp_timer_callback(struct hrtimer *timer)
 {
 	static u8 msg[] = {0,0,0,0,0};
+	static u8 dmsg[] = {0xFF,0xFF,0xFF,0xFF,0xFF};
 	static int countArrayPart = 0;
 
 	if (!embeddedLamp_dev.running) {
@@ -405,18 +407,6 @@ static int __init embeddedLamp_init_spi(void)
         gpio_direction_output(GPIO_PIN, 0);
 
 
-/*
-	int gpioControl,gpioExport,gpioValue;
-
-	gpioControl = open(GPIO_CONTROL,O_WRONLY|O_NOCTTY|O_NDELAY);
-	write(gpioControl, "140", 3);
-	close(gpioControl);
-	
-	gpioExport = open(GPIO_EXPORT,O_WRONLY|O_NOCTTY|O_NDELAY);
-	write(gpioExport, "low", 3);
-	close(gpioExport);
-*/
-	
 
 	embeddedLamp_ctl.tx_buff = kmalloc(SPI_BUFF_SIZE, GFP_KERNEL | GFP_DMA);
 	if (!embeddedLamp_ctl.tx_buff) {
@@ -553,6 +543,8 @@ module_init(embeddedLamp_init);
 
 static void __exit embeddedLamp_exit(void)
 {
+
+	gpio_free(GPIO_PIN);
 	spi_unregister_device(embeddedLamp_dev.spi_device);
 	spi_unregister_driver(&embeddedLamp_driver);
 
