@@ -87,6 +87,8 @@ struct embeddedLamp_dev {
 
 static struct embeddedLamp_dev embeddedLamp_dev;
 
+
+
 // callback, after each completed message transmission (consists of 5 8bit messages)
 static void embeddedLamp_completion_handler(void *arg)
 {	
@@ -100,6 +102,8 @@ static void embeddedLamp_completion_handler(void *arg)
 	embeddedLamp_ctl.busy = 0;
     	gpio_set_value(GPIO_PIN,0);
 }
+
+
 
 // used to write the messages into the FIFO queue (queue is being handled by kernel)
 static int embeddedLamp_queue_spi_write(u8 *fivePartMsg)
@@ -146,6 +150,8 @@ static int embeddedLamp_queue_spi_write(u8 *fivePartMsg)
 	return status;	
 }
 
+
+
 /**
  * 
  */
@@ -188,6 +194,7 @@ static enum hrtimer_restart embeddedLamp_timer_callback(struct hrtimer *timer)
 	// restart the timer
 	return HRTIMER_RESTART;
 }
+
 
 
 /**
@@ -352,6 +359,7 @@ static int embeddedLamp_remove(struct spi_device *spi_device)
 
 	return 0;
 }
+
 
 
 /**
@@ -602,14 +610,19 @@ static int __init embeddedLamp_init(void)
 
 	return 0;
 
+	
+	
+// initialization of SPI failed
 fail_3:
 	device_destroy(embeddedLamp_dev.class, embeddedLamp_dev.devt);
 	class_destroy(embeddedLamp_dev.class);
 
+// registration of the module failed
 fail_2:
 	cdev_del(&embeddedLamp_dev.cdev);
 	unregister_chrdev_region(embeddedLamp_dev.devt, 1);
 
+// initialization of character device failed
 fail_1:
 	return -1;
 }
@@ -627,7 +640,10 @@ static void __exit embeddedLamp_exit(void)
 	spi_unregister_device(embeddedLamp_dev.spi_device);
 	spi_unregister_driver(&embeddedLamp_driver);
 
+	// remove the character device from the file system
 	device_destroy(embeddedLamp_dev.class, embeddedLamp_dev.devt);
+	
+	// unregister module
 	class_destroy(embeddedLamp_dev.class);
 
 	cdev_del(&embeddedLamp_dev.cdev);
