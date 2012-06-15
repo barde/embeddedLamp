@@ -111,6 +111,7 @@ static int embeddedLamp_queue_spi_write(u8 *msg)
 {
 	int status;
 	unsigned long flags;
+	u8 tempNumber;
 	int i;
 
 
@@ -254,7 +255,7 @@ static ssize_t embeddedLamp_write(struct file *filp, const char __user *buff,
 		return -ERESTARTSYS;
 
 	memset(embeddedLamp_dev.user_buff, 0, 16);
-	len = count > 8 ? 8 : count;
+	len = count > 16 ? 16 : count;
 
 	if (copy_from_user(embeddedLamp_dev.user_buff, buff, len)) {
 		status = -EFAULT;
@@ -297,12 +298,11 @@ static ssize_t embeddedLamp_write(struct file *filp, const char __user *buff,
 	else if (strlen(embeddedLamp_dev.user_buff) == 11) {
         	u8 msg[] = {0,0,0,0,0};
 		char transString[2];	
-		long tempNumber;
 		int i;
-		for(i = 0; i <= 10; i = i + 2) {
+		for(i = 0; i < 10; i = i + 2) {
 			transString[0] = embeddedLamp_dev.user_buff[i];
 			transString[1] = embeddedLamp_dev.user_buff[i+1];
-			msg[i/2] = simple_strtol(transString[0],NULL,2);
+			msg[i/2] = simple_strtol(transString,NULL,16);
                 }
 		embeddedLamp_queue_spi_write(msg);
 		embeddedLamp_dev.running = 1; 
