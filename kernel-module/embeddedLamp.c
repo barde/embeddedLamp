@@ -48,9 +48,10 @@
 // SPI configuration, every SPI transfer consists of 5 8bit messages
 #define SPI_BUS 1
 #define SPI_BUS_CS1 1 			// chip select
-#define SPI_BUS_SPEED 1000000 	// 10 MHz
+///#define SPI_BUS_SPEED 1000000 	// 10 MHz
+#define SPI_BUS_SPEED 50000 	// 10 MHz
 
-#define DEFAULT_WRITE_FREQUENCY 100		// in Hz, frequency in which messages are being sent
+#define DEFAULT_WRITE_FREQUENCY 10		// in Hz, frequency in which messages are being sent
 static int write_frequency = DEFAULT_WRITE_FREQUENCY;
 module_param(write_frequency, int, S_IRUGO);
 MODULE_PARM_DESC(write_frequency, "Spike write frequency in Hz");
@@ -97,7 +98,7 @@ static void embeddedLamp_completion_handler(void *arg)
 	//set latching for LED over GPIO
 	gpio_set_value(GPIO_PIN,1);
 	//wait 5ms
-	mdelay(5);
+	//mdelay(5);
 	embeddedLamp_ctl.spi_callbacks++;
 	embeddedLamp_ctl.busy = 0;
     	gpio_set_value(GPIO_PIN,0);
@@ -106,14 +107,13 @@ static void embeddedLamp_completion_handler(void *arg)
 
 
 // used to write the messages into the FIFO queue (queue is being handled by kernel)
-static int embeddedLamp_queue_spi_write(u8 *fivePartMsg)
+static int embeddedLamp_queue_spi_write(u8 *msg)
 {
 	int status;
 	unsigned long flags;
-	u8 msg[5];
+	u8 tempNumber;
 	int i;
 
-	fivePartMsg = &msg[0];
 
 	spi_message_init(&embeddedLamp_ctl.msg);
 
@@ -178,7 +178,7 @@ static enum hrtimer_restart embeddedLamp_timer_callback(struct hrtimer *timer)
 
 	/* increase a running counter for demo display */
 	// did we reach the maximum value?
-	if(msg[countArrayPart] == 0xFFFF){
+	if(msg[countArrayPart] == 0xFF){
 		if(countArrayPart < 5)
 			countArrayPart++;
 		else{
@@ -255,7 +255,7 @@ static ssize_t embeddedLamp_write(struct file *filp, const char __user *buff,
 		return -ERESTARTSYS;
 
 	memset(embeddedLamp_dev.user_buff, 0, 16);
-	len = count > 8 ? 8 : count;
+	len = count > 16 ? 16 : count;
 
 	if (copy_from_user(embeddedLamp_dev.user_buff, buff, len)) {
 		status = -EFAULT;
@@ -264,6 +264,9 @@ static ssize_t embeddedLamp_write(struct file *filp, const char __user *buff,
 
 	/* we'll act as if we looked at all the data */
 	status = count;
+
+        printk(KERN_ALERT "embeddedLamp_dev.user_buff: %s\n", embeddedLamp_dev.user_buff);
+       	printk(KERN_ALERT "len(embeddedLamp_dev.user_buff): %i\n", strlen(embeddedLamp_dev.user_buff));
 
 	/* but we only care about the first 5 characters */
 	if (!strnicmp(embeddedLamp_dev.user_buff, "start", 5)) {
@@ -292,6 +295,18 @@ static ssize_t embeddedLamp_write(struct file *filp, const char __user *buff,
 		hrtimer_cancel(&embeddedLamp_dev.timer);
 		embeddedLamp_dev.running = 0;
 	}
+	else if (strlen(embeddedLamp_dev.user_buff) == 11) {
+        	u8 msg[] = {0,0,0,0,0};
+		char transString[2];	
+		int i;
+		for(i = 0; i < 10; i = i + 2) {
+			transString[0] = embeddedLamp_dev.user_buff[i];
+			transString[1] = embeddedLamp_dev.user_buff[i+1];
+			msg[i/2] = simple_strtol(transString,NULL,16);
+                }
+		embeddedLamp_queue_spi_write(msg);
+		embeddedLamp_dev.running = 1; 
+        }
 
 embeddedLamp_write_done:
 
