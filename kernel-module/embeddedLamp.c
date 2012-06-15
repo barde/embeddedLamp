@@ -48,9 +48,10 @@
 // SPI configuration, every SPI transfer consists of 5 8bit messages
 #define SPI_BUS 1
 #define SPI_BUS_CS1 1 			// chip select
-#define SPI_BUS_SPEED 1000000 	// 10 MHz
+///#define SPI_BUS_SPEED 1000000 	// 10 MHz
+#define SPI_BUS_SPEED 50000 	// 10 MHz
 
-#define DEFAULT_WRITE_FREQUENCY 100		// in Hz, frequency in which messages are being sent
+#define DEFAULT_WRITE_FREQUENCY 10		// in Hz, frequency in which messages are being sent
 static int write_frequency = DEFAULT_WRITE_FREQUENCY;
 module_param(write_frequency, int, S_IRUGO);
 MODULE_PARM_DESC(write_frequency, "Spike write frequency in Hz");
@@ -97,7 +98,7 @@ static void embeddedLamp_completion_handler(void *arg)
 	//set latching for LED over GPIO
 	gpio_set_value(GPIO_PIN,1);
 	//wait 5ms
-	mdelay(5);
+	//mdelay(5);
 	embeddedLamp_ctl.spi_callbacks++;
 	embeddedLamp_ctl.busy = 0;
     	gpio_set_value(GPIO_PIN,0);
@@ -176,7 +177,7 @@ static enum hrtimer_restart embeddedLamp_timer_callback(struct hrtimer *timer)
 
 	/* increase a running counter for demo display */
 	// did we reach the maximum value?
-	if(msg[countArrayPart] == 0xFFFF){
+	if(msg[countArrayPart] == 0xFF){
 		if(countArrayPart < 5)
 			countArrayPart++;
 		else{
@@ -262,6 +263,9 @@ static ssize_t embeddedLamp_write(struct file *filp, const char __user *buff,
 
 	/* we'll act as if we looked at all the data */
 	status = count;
+
+        printk(KERN_ALERT "embeddedLamp_dev.user_buff: %s\n", embeddedLamp_dev.user_buff);
+       	printk(KERN_ALERT "len(embeddedLamp_dev.user_buff): %i\n", strlen(embeddedLamp_dev.user_buff));
 
 	/* but we only care about the first 5 characters */
 	if (!strnicmp(embeddedLamp_dev.user_buff, "start", 5)) {
