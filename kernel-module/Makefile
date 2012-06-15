@@ -9,5 +9,6 @@ all:
 	echo start >/dev/embeddedLamp
 
 clean:
-	rmmod embeddedLamp
 	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean
+unload:
+	rmmod embeddedLamp

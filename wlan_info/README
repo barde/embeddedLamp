@@ -1,2 +1,6 @@
 # COMPILE
-gcc wlan_info.c -o wlan_info -L. -liw -lm
+gcc wlan_info.c -Wall  -o wlan_info -L. -liw -lm
+
+
+
+

@@ -106,14 +106,12 @@ static void embeddedLamp_completion_handler(void *arg)
 
 
 // used to write the messages into the FIFO queue (queue is being handled by kernel)
-static int embeddedLamp_queue_spi_write(u8 *fivePartMsg)
+static int embeddedLamp_queue_spi_write(u8 *msg)
 {
 	int status;
 	unsigned long flags;
-	u8 msg[5];
 	int i;
 
-	fivePartMsg = &msg[0];
 
 	spi_message_init(&embeddedLamp_ctl.msg);
 
@@ -292,6 +290,19 @@ static ssize_t embeddedLamp_write(struct file *filp, const char __user *buff,
 		hrtimer_cancel(&embeddedLamp_dev.timer);
 		embeddedLamp_dev.running = 0;
 	}
+	else if (strlen(embeddedLamp_dev.user_buff) == 11) {
+        	u8 msg[] = {0,0,0,0,0};
+		char transString[2];	
+		long tempNumber;
+		int i;
+		for(i = 0; i <= 10; i = i + 2) {
+			transString[0] = embeddedLamp_dev.user_buff[i];
+			transString[1] = embeddedLamp_dev.user_buff[i+1];
+			msg[i/2] = simple_strtol(transString[0],NULL,2);
+                }
+		embeddedLamp_queue_spi_write(msg);
+		embeddedLamp_dev.running = 1; 
+        }
 
 embeddedLamp_write_done:
 
