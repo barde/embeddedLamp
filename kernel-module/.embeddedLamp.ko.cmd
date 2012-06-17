@@ -1,0 +1,1 @@
+cmd_/home/panda/embeddedLamp/kernel-module/embeddedLamp.ko := ld -EL -r  -T /usr/src/linux-headers-3.2.0-1412-omap4/scripts/module-common.lds --build-id  -o /home/panda/embeddedLamp/kernel-module/embeddedLamp.ko /home/panda/embeddedLamp/kernel-module/embeddedLamp.o /home/panda/embeddedLamp/kernel-module/embeddedLamp.mod.o

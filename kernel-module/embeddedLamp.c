@@ -301,8 +301,11 @@ static ssize_t embeddedLamp_write(struct file *filp, const char __user *buff,
 		int i;
 		for(i = 0; i < 10; i = i + 2) {
 			transString[0] = embeddedLamp_dev.user_buff[i];
+			//printk(KERN_ALERT "transstring[0]: %s\n", transString[0]);
 			transString[1] = embeddedLamp_dev.user_buff[i+1];
+			//printk(KERN_ALERT "transstring[1]: %s\n", transString[1]);
 			msg[i/2] = simple_strtol(transString,NULL,16);
+			//printk(KERN_ALERT "msg[i/2]: %x", msg[i/2]);
                 }
 		embeddedLamp_queue_spi_write(msg);
 		embeddedLamp_dev.running = 1; 
