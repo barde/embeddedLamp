@@ -16,7 +16,7 @@ Group members
 Overview
 --------
 
-![General overview of project](https://github.com/Phialo/embeddedLamp/raw/master/overview.png) "Some rough overview in a simulated UML environment")
+![General overview of project](https://github.com/Phialo/embeddedLamp/raw/master/overview.png)
 
 Connection Hint for Working at Home
 ---------------------------------
