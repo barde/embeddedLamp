@@ -1,0 +1,75 @@
+\documentclass[bibtotocnumbered, headsepline,normalheadings]{report}
+\usepackage[utf8]{inputenc}
+\usepackage{color}
+\usepackage{tabularx}
+\usepackage[T1]{fontenc}
+\usepackage{textcomp}
+\usepackage[polutonikogreek,english]{babel}
+\usepackage{ucs}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{listings}
+\lstset{breaklines=true,showstringspaces=false,numbers=left,frame=single,prebreak=\mbox{$\hookleftarrow$}}
+\usepackage[hidelinks]{hyperref}
+\usepackage[a4paper,margin=2cm]{geometry} 
+\usepackage{scrpage}
+\usepackage{alltt}
+\usepackage{float}
+\usepackage{graphicx}
+\definecolor{darkblue}{rgb}{0,0,.5}
+\hypersetup{pdftex=true, colorlinks=false, breaklinks=true, citecolor=darkblue, linkcolor=darkblue, menucolor=darkblue, pagecolor=darkblue, urlcolor=darkblue,
+pdftitle={embeddedLamp - SPI protocol driver for ARM board for Showing WLAN Link Quality},
+pdfauthor={Bartholomäus Dedersen, Kamil Wozniak, Simon Wiesmann, Mathias Goehlke},
+bookmarks=true,
+bookmarksnumbered=true,
+bookmarksopen=true,
+bookmarksopenlevel=2}
+\pagestyle{headings}
+\newcommand{\gdir}%
+   {\foreignlanguage{polutonikogreek}}
+\begin{document}
+
+\author{ 
+Bartholomäus Dedersen \\ Fachhochschule Kiel \\ bartholomaeus.dedersen@student.fh-kiel.de \and
+Bla \\ FFF \\ FFF@ff.de}
+
+\date{\today} 
+\title{SPI protocol driver for Showing WLAN Link Quality} 
+
+\maketitle
+
+
+\begin{abstract}
+
+    BLABLA
+
+\end{abstract}
+
+\tableofcontents \newpage
+
+\chapter{Introduction}
+
+\input{introduction.tex}
+
+\chapter{Hardware Design}
+\label{chap:hardware}
+
+\input{hardware.tex}
+
+\chapter{Kernel Interface}
+\label{chap:kernel}
+\input{kernel.tex}
+
+\chapter{Userspace Driver}
+\label{chap:userspace}
+\input{userspace.tex}
+
+
+
+\nocite{*}
+\bibliographystyle{alpha}
+\bibliography{biblamp}
+\listoffigures
+\begingroup \let\clearpage\relax
+\listoftables \endgroup
+\end{document} 
