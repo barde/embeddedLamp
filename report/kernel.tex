@@ -25,8 +25,12 @@ Two different approaches for programming were available:
 \item SPI protocol drivers allow the whole range of configuration. Some kernel provided structures have to be used.
 \end{enumerate}
 
+As the spidev-driver is for rapid prototyping or quick hacks we used a protocol driver. Additionally, a char device for control messages was added.
 
-ASYNC SYNC MESSAGES
+Another difference in the kernel interface for SPI is the choice between synchronous and asynchronous transfer. The difference is that asynchronous 
+mode offers the possibility to add new messages to a queue which uses a callback function after sending the message through the bus. The FIFO-queue 
+is in the responsibility of the kernel. Most important part is the avoidance of calls which can sleep in the callback-function as it runs in a 
+separate kernel thread. In our project we used a wait-command for testing this feature. Also, no semaphores or memory allocation is possible.
 
 \subsection{Various Howtos}
 
