@@ -101,7 +101,7 @@ static void embeddedLamp_completion_handler(void *arg)
 	//mdelay(5);
 	embeddedLamp_ctl.spi_callbacks++;
 	embeddedLamp_ctl.busy = 0;
-    	gpio_set_value(GPIO_PIN,0);
+   	gpio_set_value(GPIO_PIN,0);
 }
 
 
@@ -265,8 +265,8 @@ static ssize_t embeddedLamp_write(struct file *filp, const char __user *buff,
 	/* we'll act as if we looked at all the data */
 	status = count;
 
-        printk(KERN_ALERT "embeddedLamp_dev.user_buff: %s\n", embeddedLamp_dev.user_buff);
-       	printk(KERN_ALERT "len(embeddedLamp_dev.user_buff): %i\n", strlen(embeddedLamp_dev.user_buff));
+    //printk(KERN_ALERT "embeddedLamp_dev.user_buff: %s\n", embeddedLamp_dev.user_buff);
+    //printk(KERN_ALERT "len(embeddedLamp_dev.user_buff): %i\n", strlen(embeddedLamp_dev.user_buff));
 
 	/* but we only care about the first 5 characters */
 	if (!strnicmp(embeddedLamp_dev.user_buff, "start", 5)) {
@@ -296,7 +296,7 @@ static ssize_t embeddedLamp_write(struct file *filp, const char __user *buff,
 		embeddedLamp_dev.running = 0;
 	}
 	else if (strlen(embeddedLamp_dev.user_buff) == 11) {
-        	u8 msg[] = {0,0,0,0,0};
+        u8 msg[] = {0,0,0,0,0};
 		char transString[2];	
 		int i;
 		for(i = 0; i < 10; i = i + 2) {
@@ -321,7 +321,7 @@ embeddedLamp_write_done:
 
 
 /**
- * Creates /dev/embeddedLamp in the file system
+ * Create  semaphores for opening the char device
  */
 static int embeddedLamp_open(struct inode *inode, struct file *filp)
 {	
@@ -360,7 +360,7 @@ static int embeddedLamp_probe(struct spi_device *spi_device)
 
 
 /**
- * Remove device /dev/embeddedLamp from file system
+ * Remove device from SPI bus and reset IRQ
  */
 static int embeddedLamp_remove(struct spi_device *spi_device)
 {
