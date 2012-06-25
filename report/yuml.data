@@ -1,0 +1,2 @@
+Kernel Module:
+(start)->|a|,|a|->(Init Char device)->|b|,|a|->(Init module)->|b|,|a|->(Init SPI bus)->|b|,|b|-><c>[errors]->(Bailout)->(end),<c>[satisfied]->|d|,|d|->(Queue SPI Messages)-><f>,|d|->(Read Control Messages)-><g>,<f>[timer for counter active]->(Queue SPI Messages),<f>[no timer]->(Read Control Messages),<g>[data available]->(Queue SPI Messages),<g>[unload]->(end)
