@@ -5,7 +5,7 @@
    2012 (C) Bartholomaeus Dedersen, Fachhochschule Kiel, Germany
 
    Loosely based on works of Scott Ellis
-   https://github.com/scottellis/embeddedLamp/
+   https://github.com/scottellis
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
