@@ -1,0 +1,24 @@
+\section{C Application wlan\_info.c}
+
+The initial choice was to write an application in C and use the \textit{iwlib} library provided by the \textit{Wireless Tools} project \footnote{\url{http://www.hpl.hp.com/personal/Jean_Tourrilhes/Linux/Tools.html}}. It is funded by \textit{Hewlett Packard} and available as Open Source software. Furthermore, it also includes applications for getting data about wireless hardware and information about wireless networks.
+
+The application consists of two files: \textit{wlan\_info.c} and \textit{wlan\_info.h}. The latter is being included right at the beginning of \textit{wlan\_info.c}. The only thing the header file does is to include some libraries (like the math library and the aforementioned \textit{iwlib}). The C file includes the actual logic of the program which is diveded into three functions: 
+
+
+
+\begin{lstlisting}[language=bash]
+$ gcc wlan_info.c -Wall -o wlan_info -L. -liw -lm
+In file included from wireless.h:74:0,
+                 from iwlib.h:59,
+                 from wlan_info.h:9,
+                 from wlan_info.c:1:
+/usr/include/linux/if.h:137:8: error: redefinition of 'struct ifmap'
+/usr/include/net/if.h:112:8: note: originally defined here
+/usr/include/linux/if.h:171:8: error: redefinition of 'struct ifreq'
+/usr/include/net/if.h:127:8: note: originally defined here
+/usr/include/linux/if.h:220:8: error: redefinition of 'struct ifconf'
+/usr/include/net/if.h:177:8: note: originally defined here
+\end{lstlisting}
+
+
+\section{Bash Application wlan\_info.sh}
