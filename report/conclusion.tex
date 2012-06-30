@@ -1,0 +1,14 @@
+The project was done by four members which took responsibility concerning parts which were defined in the first mock-up design.
+Everything was adapted to the Panda Board, which is a development platform for the OMAP4XXX chipset which is based on 
+ARM.
+
+The hardware was completely build by us. The user space programs for testing the bar showed the WLAN link quality as reported
+by the wireless driver and another program showed the CPU load. Both scripts were done as bash-scripts which itself created 
+heavy load.
+
+An important fact are benchmarks which were done after finishing the project. We added another possibility of sending the data 
+to the LED-bar. Firstly, a SPI interface done with a kernel protocol driver was done with configurable bus and data transfer speed.
+Secondly, another form of sending data was done by using a micro controller which prepared and refreshed the LEDs.
+Between this two there was no considerable load difference, even when increasing the bus speed of SPI to 10 MHz.
+
+As an improvement the user space programs would need to be developed in the C-language or even better, in assembly code.

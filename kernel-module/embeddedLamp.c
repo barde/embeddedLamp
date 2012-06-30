@@ -48,8 +48,8 @@
 // SPI configuration, every SPI transfer consists of 5 8bit messages
 #define SPI_BUS 1
 #define SPI_BUS_CS1 1 			// chip select
-///#define SPI_BUS_SPEED 10000000 	// 10 MHz
-#define SPI_BUS_SPEED 50000 	// 50 kHz
+#define SPI_BUS_SPEED 10000000 	// 10 MHz
+//#define SPI_BUS_SPEED 50000 	// 50 kHz
 
 #define DEFAULT_WRITE_FREQUENCY 10		// in Hz, frequency in which messages are being sent
 static int write_frequency = DEFAULT_WRITE_FREQUENCY;
