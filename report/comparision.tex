@@ -1,0 +1,16 @@
+After first presentation the group decided to prepare additional experiments to show the effects of sheduling and the used protocol.
+For this purpose the microcontroller development board \textit{Arduino} was extended to understand the protocol\footnote{A choice of either \textit{start}, \textit{stop} or a ten digit upper-case hex encoded string to the device \textit{/dev/embeddedLamp}.}
+
+Our result was open but we expected an decrease in system load using the microcontroller instead of the SPI-Inteface by about 20\%.
+
+The transformation of the specific data order for the hardware LED-Part was also taken into the microcontroller.
+
+The group also did a switch in the userland application to measure the system load instead of the WLAN-Link quality. Alltogether, the 
+user space application exists in two versions, compiled and in bash-Shell script. The values were
+stored in files with one value per row.\footnote{Available in the Github-Repository \url{https://github.com/Phialo/embeddedLamp/tree/master/testseries}.}
+
+Outcome in short: the load decreased from 53\% down to 0,005\% in the fastest configuration using the SPI-Bus with 50kHz Bus frequency while using the compiled version of the load script. However, when using a 10Hz userspace version the micro controller version is 10\% faster than the SPI-Bus solution.
+We can only explain the decreased load due to ineffective calls by the bash-script which calls other processes by itself. The 
+faster microcontroller is only 0,494\% for SPI compared to 0,44\% for the micro controller.
+
+For the results are included as last page of this record.
