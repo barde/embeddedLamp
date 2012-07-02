@@ -1,5 +1,6 @@
 \documentclass[bibtotocnumbered, headsepline,normalheadings]{report}
 \usepackage[utf8]{inputenc}
+\usepackage{pdfpages}
 \usepackage{color}
 \usepackage{tabularx}
 \usepackage[T1]{fontenc}
@@ -65,8 +66,8 @@ Bla \\ FFF \\ FFF@ff.de}
 \input{userspace.tex}
 
 \chapter{Comparision}
-\label{chap:comperision}
-\input{comperision.tex}
+\label{chap:comparision}
+\input{comparision.tex}
 
 \chapter{Conclusion}
 \label{chap:conclusion}
@@ -79,5 +80,5 @@ Bla \\ FFF \\ FFF@ff.de}
 \listoffigures
 \begingroup \let\clearpage\relax
 \listoftables \endgroup
-\includepdf{comparision.pdf}
+\includepdf{./comparision.pdf}
 \end{document} 
