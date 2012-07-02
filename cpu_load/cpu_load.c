@@ -116,7 +116,7 @@ void bitStreamToHex(int * cDecimcal, char * cHex)
 	int i;
 	for(i = 0; i < 5; i++)
 	{
-		sprintf(&cHex[i * 2], "%02x", cDecimcal[i]);
+		sprintf(&cHex[i * 2], "%02X", cDecimcal[i]);
 	}
 
 } //endmethod bitStreamToHex
@@ -219,11 +219,12 @@ int main(int argc, char *argv[])
 			iCpuUsage = (iCpuTimeTotal / ((dNewTime - dOldTime) * 100)) * 100;
 
 			// write to stdout	
-			printf("cpu usage: %i%\n", iCpuUsage);
+			//printf("cpu usage: %i%\n", iCpuUsage);
+			printf("%i\n", iCpuUsage);
 
 			// scale to 40 
 			iCpuUsageScaled = scaleFromTo(iCpuUsage, 100, 40);
-			printf("cpu usage scaled: %i\n", iCpuUsageScaled);
+			//printf("cpu usage scaled: %i\n", iCpuUsageScaled);
 
 			// create bitstream
 			generateBitStream(iCpuUsageScaled, bit_stream_dec);
@@ -240,12 +241,12 @@ int main(int argc, char *argv[])
 			int i;
 			for(i = 9; i >= 0; i=i-2)
 			{
-				printf("%c", bit_stream_hex[i-1]);
+				//printf("%c", bit_stream_hex[i-1]);
 				fprintf(fhOutput, "%c", bit_stream_hex[i-1]);
-				printf("%c", bit_stream_hex[i]);
+				//printf("%c", bit_stream_hex[i]);
 				fprintf(fhOutput, "%c", bit_stream_hex[i]);
 			}
-			printf("\n");
+			//printf("\n");
 			fprintf(fhOutput, "\n");
 
 		} //endif
@@ -265,7 +266,7 @@ int main(int argc, char *argv[])
 	
 
 	// close output file
-	fclose(fhOutput);
+		fclose(fhOutput);
 
 	// app has finished successfully
 	return 0;
