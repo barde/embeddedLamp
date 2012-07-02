@@ -242,12 +242,12 @@ int main(int argc, char *argv[])
 			for(i = 9; i >= 0; i=i-2)
 			{
 				//printf("%c", bit_stream_hex[i-1]);
-				fprintf(fhOutput, "%c", bit_stream_hex[i-1]);
+				//fprintf(fhOutput, "%c", bit_stream_hex[i-1]);
 				//printf("%c", bit_stream_hex[i]);
-				fprintf(fhOutput, "%c", bit_stream_hex[i]);
+				//fprintf(fhOutput, "%c", bit_stream_hex[i]);
 			}
 			//printf("\n");
-			fprintf(fhOutput, "\n");
+			//fprintf(fhOutput, "\n");
 
 		} //endif
 		

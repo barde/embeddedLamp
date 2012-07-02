@@ -261,8 +261,8 @@ int main(int argc, char *argv[])
 
 		// wait for one second
 		//sleep(1);
-        // 10Hz
-        usleep(500 * 1000);
+        	// 10Hz
+        	usleep(100 * 1000);
 		
 	} //endwhile true
 	
