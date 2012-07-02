@@ -2,7 +2,7 @@ The main idea behind this project was to use the \textit{Pandaboard} - an embedd
 Examples for so called \textit{User-space} application are measuring the quality of a connected WLAN, measuring the signal strength of a WLAN and also to output the \textit{Load} - CPU usage - of the \textit{Pandaboard}.
 
 \section{Pandaboard}
-The \textit{Pandaboard} is a low-power, low-cost single-board computer development platform based on the Texas Instruments OMAP44xx system-on-a-chip family. \footnote{More about the \textit{Pandaboard} can be found on \url{http://pandaboard.org/}  and  \url{http://en.wikipedia.org/wiki/PandaBoard}.} 
+The \textit{Pandaboard} is a low-power, low-cost single-board computer development platform based on the Texas Instruments OMAP44xx system-on-a-chip family.\footnote{More about the \textit{Pandaboard} can be found on \url{http://pandaboard.org/}  and  \url{http://en.wikipedia.org/wiki/PandaBoard}.} The board displayed in \ref{fig:pandaBoard_Alone} shows our setup with an installed SD card, on which the operating system has been placed. We have used \textit{Debian}\footnote{\textit{Debain} is a wide-spreaded operationg system with many derivates. It is commonly used as desktop but also server operating system. More information about \textit{Debian} can be found on the official website \url{http://debain.org}.} as our operating system. There are also a lot more of operating systems pre-configured for the use on a \textit{Pandaboard}.
 
 \begin{figure}[H]
    \centering
@@ -13,7 +13,7 @@ The \textit{Pandaboard} is a low-power, low-cost single-board computer developme
 
 \newpage
 \subsection{Features of the Pandaboard}
-In the following table we will show the most important hardware features of the \textit{Pandaboard}.
+In the following table \ref{tab:pandaBoardTable} we will show the most important hardware features of the \textit{Pandaboard}. Especially the extensions are very interesting for realizing our project as we have to decide, which of the pins and which protocol we can use.
 
 \begin{table}[h]
 \centering
@@ -27,25 +27,36 @@ Audio & Low power audio, 3.5"  Audio in/out \\ \hline
 Storage & Full size SD/MMC card cage \\ \hline
 LAN & Onboard 10/100 Ethernet \\ \hline
 Wireless connections & 802.11 b/g/n, Bluetooth® v2.1 + EDR \\ \hline
-Expansiona & General purpose expansion header (I2C, SPI, GPMC, USB, MMC, DSS, ETM) \\
+Expansiona & General purpose expansion header (I2C, SPI, GPMC, USB, MMC, DSS, ETM) \\ \hline
+Price & ca. 180 Euro \\
 \hline
 \end{tabular}
 \caption{Pandaboard feature list}
 \label{tab:pandaBoardTable}
 \end{table}
 
-\section{LED-Bar}
 \begin{figure}[H]
    \centering
-   \includegraphics[width=0.3\textwidth]{img/LED-Bar.png}%
+   \includegraphics[width=0.8\textwidth]{img/Pandaboard_Setup.png}%
+   \caption{Setup of a \textit{Pandaboard},  source: \url{http://pandaboard.org/node/223/}}
+   \label{fig:pandaBoard_Setup}%
+\end{figure}
+
+\newpage
+\section{LED-Bar}
+The LED-bar contains 40 LED's, which will be connected to the extension connectors and steered by the \textit{Pandaboard} . A more detailed description of the  circuitry will be presented in the next chapter \textit{Hardware Design}. 
+\begin{figure}[H]
+   \centering
+   \includegraphics[width=0.4\textwidth, angle=90]{img/LED-Bar.png}%
    \caption{LED-Bar with 40 LED's and level-shifter.}
    \label{fig:ledBar}%
 \end{figure}
 
 \section{Goal to achieve}
+As we already described in the introduction we would like to be able to run some application on the \textit{Pandaboard} and steer the LED-bar with it. In figure \ref{fig:completeProject} we have connected the board to a micro controller and the micro controller to the LED-bar. This case was for testing the functionality. The final result should be running without the micro controller inbetween the board and the LED-bar.
 \begin{figure}[H]
    \centering
    \includegraphics[width=0.8\textwidth]{img/Panda_and_LED_Bar.jpg}%
-   \caption{Powering the LED-bar with the Pandaboard and a microcontroller}
+   \caption{Powering the LED-bar with the Pandaboard and a micro controller}
    \label{fig:completeProject}%
 \end{figure}
