@@ -81,7 +81,11 @@ done
 
 In addition to displaying the wireless LAN link quality on the LED bar we wanted to be able to show the CPU load. Therefore we implemented another \textit{bash} application.  Just like in the applications before a loop is being used to continuously send data to the LED bar in one second intervals. The functions \textit{scale}, \textit{generate\_bitstream} and \textit{bitstream\_to\_hex} are being reused. Since the CPU load is being calculated in percent the \textit{scale} function was adapted to scale from 100 to 40 instead of 70 to 40. The CPU load is being calculated as follows:
 
+\begin{enumerate} 
 
+\item Run \textit{cat /proc/stat}. This file contains the CPU times for the userspace, niced processes (processes whose priority cna change), system processes and others. We collect the CPU time and calculate the difference in CPU time between two iterations. 
+
+\end{enumerate}
 
 
 
