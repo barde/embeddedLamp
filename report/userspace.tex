@@ -4,9 +4,20 @@ The initial choice was to write an application in C and use the \textit{iwlib} l
 
 The application consists of two files: \textit{wlan\_info.c} and \textit{wlan\_info.h}. The latter is being included right at the beginning of \textit{wlan\_info.c}. The only thing the header file does is to include some libraries (like the math library and the aforementioned \textit{iwlib}). The C file includes the actual logic of the program which is diveded into three functions: 
 
+\begin{itemize}
+
+\item \textit{error}: This function is used to print error message to \textit{stderr} usind the \textit{perror} method and exit the application afterwards.
+
+\item \textit{intHandler} is being called when the interrupt signal \textit{SIGINT} occurs. Inside this function the \textit{boolean} variable that controls the main loop inside the \textit{main} function is being set to \textit{false}. Like this the main loop will stop after the current iteration.
+
+\item \textit{main} contains the program's logic. Right after the start it will check if an argument has been supplied. This argument is the path to the target device where the output should be sent to. Afterwards, the function \textit{intHanlder} is being registered for catching the \textit{SIGINT} signal issued by pressing \textit{CTRL + C} in the terminal. Then a network socket is being opened to be able to fetch information about the wireless LANs. Now the program enters the program's main loop which will get the signal strength for the current WLAN and output it to the target device. When this task has been finished the loop will sleep for one second and repeat aforementioned process. 
+
+\end{itemize}
 
 
-\begin{lstlisting}[language=bash]
+The program is not finished because we encountered a header file conflict when trying to compile the code on the \textit{PandaBoard} (see listing \ref{wlan_info_header_conflict}). We were not able to resolve the issue in time and created a \textit{bash} script to implement the desired functionality.
+
+\begin{lstlisting}[language=bash, caption=Header conflict, label=wlan_info_header_conflict]
 $ gcc wlan_info.c -Wall -o wlan_info -L. -liw -lm
 In file included from wireless.h:74:0,
                  from iwlib.h:59,
@@ -22,3 +33,57 @@ In file included from wireless.h:74:0,
 
 
 \section{Bash Application wlan\_info.sh}
+
+The \textit{bash} follows the same mechanics as the \textit{C} application described before. It has a main loop that gets the data and writes it to a target device. But since this application is finished it provides more functionality. It requires two parameters: the first one is the name of the WLAN device to query for data while the second one is the target device to which the data should be passed to. This is how the main loop works:
+
+\begin{enumerate} 
+
+\item Call \textit{iwconfig} from the \textit{Wireless Tools} project to get data about the WLAN the \textit{PandaBoard} is connected to. For this task \textit{iwconfig} requires the name of the wireless device that should be queried.
+
+\item Extract the WLAN link quality using regular expressions and the tool \textit{grep}.
+
+\item Invole the \textit{scale} function which scales the link quality from a maximum of 70 to a maximum of 40. We do this since the LED bar has 40 LEDs.
+
+\item Next, \textit{generate\_bitstream} is called to generate a stream of 40 binary values. Each digit represents a LED on the LED bar where '1' stands for an activated LED while '0' means deactivated. For example, if there is a scaled value of 32, the generated stream will consist of eight 0s followed by 32 1s.
+
+\item Subsequently the method \textit{bitstream\_to\_hex} converts the 40 bits into five bytes in hexadecimal representation.
+
+\item In the end the hexadecimal values are sent to the target device.
+
+\end{enumerate}
+
+
+\begin{lstlisting}[language=bash, caption=Bash application main loop, label=wlan_info_bash_main_loop]
+while true; do
+	quality="`iwconfig $wlan_iface | grep Link`"
+
+	signal="`echo $quality | grep -Po  'Quality=(\d)+' | grep -Po  '(\d)+' `"
+
+	# scale the signal quality
+	scale
+
+	# generate the bit stream for the scaled signal quality
+	generate_bitstream
+
+	# convert bitstream to hex stream
+	bitstream_to_hex
+
+	echo "${byte_1_hex}${byte_2_hex}${byte_3_hex}${byte_4_hex}${byte_5_hex}" > $out_device
+
+	sleep 1
+done
+\end{lstlisting}
+
+
+
+
+\section{Bash Application cpu\_load.sh}
+
+In addition to displaying the wireless LAN link quality on the LED bar we wanted to be able to show the CPU load. Therefore we implemented another \textit{bash} application.  Just like in the applications before a loop is being used to continuously send data to the LED bar in one second intervals. The functions \textit{scale}, \textit{generate\_bitstream} and \textit{bitstream\_to\_hex} are being reused. Since the CPU load is being calculated in percent the \textit{scale} function was adapted to scale from 100 to 40 instead of 70 to 40. The CPU load is being calculated as follows:
+
+
+
+
+
+
+\section{C Application cpu\_load.c}
