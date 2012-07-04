@@ -46,7 +46,7 @@ The \textit{bash} follows the same mechanics as the \textit{C} application descr
 
 \item Next, \textit{generate\_bitstream} is called to generate a stream of 40 binary values. Each digit represents a LED on the LED bar where '1' stands for an activated LED while '0' means deactivated. For example, if there is a scaled value of 32, the generated stream will consist of eight 0s followed by 32 1s.
 
-\item Subsequently the method \textit{bitstream\_to\_hex} converts the 40 bits into five bytes in hexadecimal representation.
+\item Subsequently the method \textit{bitstream\_to\_hex} converts the 40 bits into five bytes in hexadecimal representation. This is done by using the program \textit{bc} for number conversion. \textit{bc} is an ``arbitrary precision calculator language'' \cite{BcManPage}.
 
 \item In the end the hexadecimal values are sent to the target device.
 
@@ -83,11 +83,41 @@ In addition to displaying the wireless LAN link quality on the LED bar we wanted
 
 \begin{enumerate} 
 
-\item Run \textit{cat /proc/stat}. This file contains the CPU times for the userspace, niced processes (processes whose priority cna change), system processes and others. We collect the CPU time and calculate the difference in CPU time between two iterations. 
+\item Run \textit{cat /proc/stat}. This file contains the CPU times for the userspace, niced processes (processes whose priority can change during runtime), system processes and others.
+
+\item We collect the CPU time and calculate the difference between two iterations. This is done by adding the time values from userspace, niced and system processes and saving the result in the variable \textit{\$TOTAL} (see lines 7-10 of listing \ref{cpu_usage_bash}). 
+
+\item Then this newly calculated value is being substracted from the value of the previous iteration that has been calculated in the same way (line 14 of listing \ref{cpu_usage_bash}). 
+
+\item Also, the difference of the CPU idle time is being determined (line 13 of listing \ref{cpu_usage_bash}). 
+
+\item Finally, the resulting idle time difference is substracted from the total CPU time difference and also divided by the total CPU time difference to get the percentage.
 
 \end{enumerate}
 
+\begin{lstlisting}[language=bash, caption=Calculation of CPU usage, label=cpu_usage_bash]
+  # Source: http://colby.id.au/node/39
+  CPU=(`cat /proc/stat | grep '^cpu '`) # Get the total CPU statistics.
+  unset CPU[0]                          # Discard the "cpu" prefix.
+  IDLE=${CPU[4]}                        # Get the idle CPU time.
+ 
+  # Calculate the total CPU time.
+  TOTAL=0
+  for VALUE in "${CPU[@]}"; do
+    let "TOTAL=$TOTAL+$VALUE"
+  done
+ 
+  # Calculate the CPU usage since we last checked.
+  let "DIFF_IDLE=$IDLE-$PREV_IDLE"
+  let "DIFF_TOTAL=$TOTAL-$PREV_TOTAL"
+  # round up by multiplying with 1000, adding 5 and dividing by 10
+  let "DIFF_USAGE=(1000*($DIFF_TOTAL-$DIFF_IDLE)/$DIFF_TOTAL+5)/10"
+\end{lstlisting}
+
+The reason we figure out the difference of two iterations is that \textit{/proc/stat} already displays average values. With this method the result is more dynamic and has more accuracy for the time of measurement. After the above calculations the result is processed by the functions \textit{scale}, \textit{generate\_bitstream} and \textit{bitstream\_to\_hex}. Then the hexadecimal values are passed on to the device by using the \textit{echo} command. Although this solution works, it generates a lot of CPU load itself due to all the individual program calls (\textit{echo}, \textit{cat}, \textit{grep}, \textit{echo}, \textit{bc}).
 
 
 
 \section{C Application cpu\_load.c}
+
+
