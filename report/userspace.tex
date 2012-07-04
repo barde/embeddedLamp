@@ -114,10 +114,12 @@ In addition to displaying the wireless LAN link quality on the LED bar we wanted
   let "DIFF_USAGE=(1000*($DIFF_TOTAL-$DIFF_IDLE)/$DIFF_TOTAL+5)/10"
 \end{lstlisting}
 
-The reason we figure out the difference of two iterations is that \textit{/proc/stat} already displays average values. With this method the result is more dynamic and has more accuracy for the time of measurement. After the above calculations the result is processed by the functions \textit{scale}, \textit{generate\_bitstream} and \textit{bitstream\_to\_hex}. Then the hexadecimal values are passed on to the device by using the \textit{echo} command. Although this solution works, it generates a lot of CPU load itself due to all the individual program calls (\textit{echo}, \textit{cat}, \textit{grep}, \textit{echo}, \textit{bc}).
+The reason we figure out the difference of two iterations is that \textit{/proc/stat} already displays average values. With this method the result is more dynamic and has more accuracy for the time of measurement. After the above calculations the result is processed by the functions \textit{scale}, \textit{generate\_bitstream} and \textit{bitstream\_to\_hex}. Then the hexadecimal values are passed on to the device by using the \textit{echo} command. Although this solution works, it generates a lot of CPU load itself due to all the individual program calls (\textit{echo}, \textit{cat}, \textit{grep}, \textit{echo}, \textit{bc}). For every program call the operating system has to create a new process, allocate memory and return the result which probably the reason for the dramatic increase of CPU load. As a consequence we implemented the same functionality as a \textit{C} application.
 
 
 
 \section{C Application cpu\_load.c}
 
+This program has the same functionality as the aforementioned \textit{bash} application. The difference is that instead of calling separate programs for the different processing steps we use the functionality provided by \textit{C}. We use file handles to read from \textit{/proc/stat} and to write to the target device. 
 
+After initializing the needed variables and opening both file handles \textit{/proc/stat} is being read and the CPU load is calculated. Next, the function \textit{scaleFromTo} scales the result from a base of 100 to 40. Now \textit{generateBitStream} creates the sequence of 1s and 0s. In the next step \textit{bitStreamToHex} converts this sequence to a five byte hexadecimal representation. In the end the hexadecimal values are written to the file handle of the target tevice.
