@@ -150,7 +150,7 @@ bitstream=""	# will hold the bit stream
 PREV_TOTAL=0
 PREV_IDLE=0
 
- 
+
 while true; do
   CPU=(`cat /proc/stat | grep '^cpu '`) # Get the total CPU statistics.
   unset CPU[0]                          # Discard the "cpu" prefix.
@@ -165,6 +165,7 @@ while true; do
   # Calculate the CPU usage since we last checked.
   let "DIFF_IDLE=$IDLE-$PREV_IDLE"
   let "DIFF_TOTAL=$TOTAL-$PREV_TOTAL"
+  # round up by multiplying with 1000, adding 5 and dividing by 10
   let "DIFF_USAGE=(1000*($DIFF_TOTAL-$DIFF_IDLE)/$DIFF_TOTAL+5)/10"
   #echo -en "\rCPU: $DIFF_USAGE%  \b\b"
 
