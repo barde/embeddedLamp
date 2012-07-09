@@ -21,6 +21,26 @@
    \label{fig:pandaBoardIOJ3}%
 \end{figure}
 
+
+\begin{table}[h]
+\centering
+\begin{tabular}{| l |  p{7cm} |}
+\hline
+\textbf{Pin} & \textbf{Used for} \\ \hline
+1 & 1.8 Volt Referenz für level Shifter \\ \hline
+2 & 5 Volt für Shift Register, LEDs und level shifter. \\ \hline
+4 & GPIO 140 für Latch signal. \\ \hline
+12 & SPI 1 Slave in Master out  für seriellen Datenstrom \\ \hline
+20 & SPI 1 clock für shift Register Takt signal \\ \hline
+27 & GND \\ \hline
+28 & GND \\
+\hline
+\end{tabular}
+\caption{Used J3 pins for this project}
+\label{tab:pinUsageTable}
+\end{table}
+
+
 \begin{figure}[H]
    \centering
    \includegraphics[width=0.8\textwidth]{img/level_Shifter.png}%
@@ -31,6 +51,6 @@
 \begin{figure}[H]
    \centering
    \includegraphics[width=0.8\textwidth]{img/Levelshifter.png}%
-   \caption{Level Shifter}
+   \caption{Level Shifter, source: \url{http://www.tincantools.com/assets/BEACON REV-B .pdf}}
    \label{fig:levelShifter2}%
 \end{figure}
